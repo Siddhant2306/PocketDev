@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +27,16 @@ fun RepositoryScreen(
     onRepositorySelected: (GitHubRepository) -> Unit,
     onLogout: () -> Unit
 ) {
+    val searchQuery = remember { mutableStateOf("") }
+    val trimmedQuery = searchQuery.value.trim()
+    val filteredRepositories = if (trimmedQuery.isEmpty()) {
+        repositories
+    } else {
+        repositories.filter { repo ->
+            repo.name.contains(trimmedQuery, ignoreCase = true) ||
+                repo.full_name.contains(trimmedQuery, ignoreCase = true)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -114,13 +126,29 @@ fun RepositoryScreen(
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "${repositories.size} repos",
+                text = if (filteredRepositories.size == repositories.size) {
+                    "${repositories.size} repos"
+                } else {
+                    "${filteredRepositories.size}/${repositories.size} repos"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = searchQuery.value,
+            onValueChange = { searchQuery.value = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            placeholder = {
+                Text("Search repositories")
+            }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         if (repositories.isEmpty()) {
             Box(
@@ -135,12 +163,25 @@ fun RepositoryScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        } else if (filteredRepositories.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No repositories match your search.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(repositories) { repo ->
+                items(filteredRepositories, key = { repo -> repo.id }) { repo ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()

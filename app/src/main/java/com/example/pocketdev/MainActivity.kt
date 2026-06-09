@@ -68,9 +68,10 @@ class MainActivity : ComponentActivity() {
                                     repoName = viewModel.selectedRepository?.name ?: "Editor",
                                     files = viewModel.repositoryFiles,
                                     selectedFile = viewModel.selectedFile,
+                                    selectedFolder = viewModel.selectedFolder,
                                     selectedContent = viewModel.selectedFileContent,
-                                    onFileClick = { file ->
-                                        viewModel.fetchFileContent(file)
+                                    onItemClick = { item ->
+                                        viewModel.selectRepositoryItem(item)
                                     },
                                     onBackClick = {
                                         viewModel.navigateToRepositories()

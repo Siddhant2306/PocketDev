@@ -29,7 +29,11 @@ interface GitHubApi {
     @GET("user/repos")
     suspend fun getRepositories(
         @Header("Authorization")
-        token: String
+        token: String,
+        @Query("per_page")
+        perPage: Int,
+        @Query("page")
+        page: Int
     ): List<GitHubRepository>
 
     @GET("repos/{owner}/{repo}/contents/{path}")

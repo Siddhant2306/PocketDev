@@ -16,7 +16,6 @@ import com.example.pocketdev.Model.GitHubContentItem
 import com.example.pocketdev.Model.Screen
 
 class MainViewModel : ViewModel() {
-
     var accessToken by mutableStateOf("")
         private set
 
@@ -44,6 +43,8 @@ class MainViewModel : ViewModel() {
     var selectedFile by mutableStateOf<GitHubContentItem?>(null)
         private set
 
+    var selectedFolder by mutableStateOf<GitHubContentItem?>(null)
+        private set
     var selectedFileContent by mutableStateOf("")
         private set
 
@@ -76,6 +77,9 @@ class MainViewModel : ViewModel() {
                 githubUser = user
                 repos = repositories
                 currentScreen = Screen.Repositories
+                repositories.forEach { repo ->
+                    Log.d("POCKETDEV", "Repository: ${repo.name}")
+                }
             } catch (e: Exception) {
                 Log.e("POCKETDEV", "GitHub Data Fetch Error", e)
             } finally {
@@ -93,18 +97,23 @@ class MainViewModel : ViewModel() {
                 val parts = repo.full_name.split("/")
                 val owner = parts[0]
                 val name = parts[1]
-                val contents = GitHubRepositoryManager.getRepositoryContents(accessToken, owner, name, "")
-                
-                // Show files only
-                repositoryFiles = contents.filter { it.type == "file" }
-                
-                if (repositoryFiles.isNotEmpty()) {
-                    val firstFile = repositoryFiles.first()
+                val contents = GitHubRepositoryManager.getRepositoryContentsRecursively(
+                    accessToken = accessToken,
+                    owner = owner,
+                    repo = name,
+                    path = ""
+                )
+
+                repositoryFiles = contents
+                selectedFolder = null
+
+                val firstFile = repositoryFiles.firstOrNull { it.type == "file" }
+                if (firstFile != null) {
                     selectedFile = firstFile
                     fetchFileContent(firstFile)
                 } else {
                     selectedFile = null
-                    selectedFileContent = "This repository has no files at the root level."
+                    selectedFileContent = "This repository has no files."
                 }
                 currentScreen = Screen.Editor
             } catch (e: Exception) {
@@ -112,6 +121,17 @@ class MainViewModel : ViewModel() {
             } finally {
                 isLoading = false
             }
+        }
+    }
+
+    fun selectRepositoryItem(item: GitHubContentItem) {
+        if (item.type == "dir") {
+            selectedFolder = item
+            selectedFile = null
+            selectedFileContent = item.path
+        } else {
+            selectedFolder = null
+            fetchFileContent(item)
         }
     }
 

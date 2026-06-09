@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object GitHubRepositoryManager {
+    private const val REPOSITORIES_PER_PAGE = 100
 
     suspend fun exchangeCodeForToken(
         clientId: String,
@@ -36,9 +37,26 @@ object GitHubRepositoryManager {
         accessToken: String
     ): List<GitHubRepository> = withContext(Dispatchers.IO) {
 
-        RetrofitInstance.api.getRepositories(
-            "Bearer $accessToken"
-        )
+        val repositories = mutableListOf<GitHubRepository>()
+        var page = 1
+
+        while (true) {
+            val pageRepositories = RetrofitInstance.api.getRepositories(
+                token = "Bearer $accessToken",
+                perPage = REPOSITORIES_PER_PAGE,
+                page = page
+            )
+
+            repositories.addAll(pageRepositories)
+
+            if (pageRepositories.size < REPOSITORIES_PER_PAGE) {
+                break
+            }
+
+            page++
+        }
+
+        repositories
     }
 
     suspend fun getRepositoryContents(
@@ -54,6 +72,45 @@ object GitHubRepositoryManager {
             repo,
             path
         )
+    }
+
+    suspend fun getRepositoryContentsRecursively(
+        accessToken: String,
+        owner: String,
+        repo: String,
+        path: String = ""
+    ): List<GitHubContentItem> = withContext(Dispatchers.IO) {
+
+        val allItems = mutableListOf<GitHubContentItem>()
+
+        suspend fun traverse(currentPath: String) {
+
+            val items = getRepositoryContents(
+                accessToken = accessToken,
+                owner = owner,
+                repo = repo,
+                path = currentPath
+            )
+
+            val sortedItems = items.sortedWith(
+                compareBy<GitHubContentItem> { if (it.type == "dir") 0 else 1 }
+                    .thenBy { it.name.lowercase() }
+            )
+
+            for (item in sortedItems) {
+
+                allItems.add(item)
+
+                if (item.type == "dir") {
+
+                    traverse(item.path)
+                }
+            }
+        }
+
+        traverse(path)
+
+        allItems
     }
 
     suspend fun getFileContent(
