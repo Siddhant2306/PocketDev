@@ -1,10 +1,12 @@
 package com.example.pocketdev.GitHub
 
+import android.util.Base64
 import android.util.Log
 import com.example.pocketdev.Model.GitHubRepository
 import com.example.pocketdev.Model.GitHubUser
 import com.example.pocketdev.Model.GitHubContentItem
 import com.example.pocketdev.Model.GitHubFileContent
+import com.example.pocketdev.Model.GitHubUpdateFileRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -126,6 +128,33 @@ object GitHubRepositoryManager {
             repo,
             path
         )
+    }
+
+    suspend fun updateFileContent(
+        accessToken: String,
+        owner: String,
+        repo: String,
+        path: String,
+        sha: String,
+        content: String
+    ): GitHubContentItem = withContext(Dispatchers.IO) {
+
+        val encodedContent = Base64.encodeToString(
+            content.toByteArray(Charsets.UTF_8),
+            Base64.NO_WRAP
+        )
+
+        RetrofitInstance.api.updateFileContent(
+            token = "Bearer $accessToken",
+            owner = owner,
+            repo = repo,
+            path = path,
+            request = GitHubUpdateFileRequest(
+                message = "Update $path from PocketDev",
+                content = encodedContent,
+                sha = sha
+            )
+        ).content
     }
 
     suspend fun loadGitHubData(

@@ -14,9 +14,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.pocketdev.Model.GitHubRepository
 import com.example.pocketdev.Model.GitHubUser
 
@@ -62,7 +64,6 @@ fun RepositoryScreen(
                         .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Initials Avatar
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -78,6 +79,13 @@ fun RepositoryScreen(
                             color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
+                        )
+
+                        AsyncImage(
+                            model = user.avatar_url,
+                            contentDescription = "${user.login} avatar",
+                            modifier = Modifier.matchParentSize(),
+                            contentScale = ContentScale.Crop
                         )
                     }
 

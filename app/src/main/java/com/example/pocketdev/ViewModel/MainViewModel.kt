@@ -47,8 +47,15 @@ class MainViewModel : ViewModel() {
         private set
     var selectedFileContent by mutableStateOf("")
         private set
+    var editorStatusMessage by mutableStateOf("")
+        private set
+    var canSaveFile by mutableStateOf(false)
+        private set
 
-    fun exchangeCodeForToken(code: String) {
+    fun exchangeCodeForToken(
+        code: String,
+        onTokenReceived: (String) -> Unit = {}
+    ) {
         isLoading = true
         loadingMessage = "Authenticating with GitHub..."
         viewModelScope.launch {
@@ -59,6 +66,7 @@ class MainViewModel : ViewModel() {
                     code
                 )
                 accessToken = token
+                onTokenReceived(token)
                 Log.d("POCKETDEV", "Token exchanged successfully")
                 fetchRepositories()
             } catch (e: Exception) {
@@ -66,6 +74,13 @@ class MainViewModel : ViewModel() {
                 isLoading = false
             }
         }
+    }
+
+    fun restoreSession(savedAccessToken: String) {
+        if (savedAccessToken.isBlank() || accessToken == savedAccessToken) return
+
+        accessToken = savedAccessToken
+        fetchRepositories()
     }
 
     fun fetchRepositories() {
@@ -129,15 +144,24 @@ class MainViewModel : ViewModel() {
             selectedFolder = item
             selectedFile = null
             selectedFileContent = item.path
+            editorStatusMessage = ""
+            canSaveFile = false
         } else {
             selectedFolder = null
             fetchFileContent(item)
         }
     }
 
+    fun updateSelectedFileContent(content: String) {
+        selectedFileContent = content
+        editorStatusMessage = ""
+    }
+
     fun fetchFileContent(file: GitHubContentItem) {
         selectedFile = file
         selectedFileContent = "Loading file content..."
+        editorStatusMessage = ""
+        canSaveFile = false
         viewModelScope.launch {
             try {
                 val repo = selectedRepository ?: return@launch
@@ -163,9 +187,50 @@ class MainViewModel : ViewModel() {
                     rawContent
                 }
                 selectedFileContent = decoded
+                editorStatusMessage = ""
+                canSaveFile = true
             } catch (e: Exception) {
                 Log.e("POCKETDEV", "Failed to load file content", e)
                 selectedFileContent = "Error loading content: ${e.message}"
+                canSaveFile = false
+            }
+        }
+    }
+
+    fun saveSelectedFileContent() {
+        val file = selectedFile ?: return
+        val repo = selectedRepository ?: return
+
+        isLoading = true
+        loadingMessage = "Saving file..."
+        editorStatusMessage = ""
+        canSaveFile = false
+
+        viewModelScope.launch {
+            try {
+                val parts = repo.full_name.split("/")
+                val owner = parts[0]
+                val name = parts[1]
+                val updatedFile = GitHubRepositoryManager.updateFileContent(
+                    accessToken = accessToken,
+                    owner = owner,
+                    repo = name,
+                    path = file.path,
+                    sha = file.sha,
+                    content = selectedFileContent
+                )
+
+                repositoryFiles = repositoryFiles.map { item ->
+                    if (item.path == updatedFile.path) updatedFile else item
+                }
+                selectedFile = updatedFile
+                editorStatusMessage = "Saved"
+            } catch (e: Exception) {
+                Log.e("POCKETDEV", "Failed to save file", e)
+                editorStatusMessage = "Save failed: ${e.message ?: "unknown error"}"
+            } finally {
+                canSaveFile = selectedFile != null
+                isLoading = false
             }
         }
     }
@@ -178,6 +243,8 @@ class MainViewModel : ViewModel() {
         repositoryFiles = emptyList()
         selectedFile = null
         selectedFileContent = ""
+        editorStatusMessage = ""
+        canSaveFile = false
         currentScreen = Screen.Login
     }
 

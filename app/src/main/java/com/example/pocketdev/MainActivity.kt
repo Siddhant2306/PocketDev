@@ -29,11 +29,25 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val sessionPreferences = getSharedPreferences(
+            SESSION_PREFERENCES,
+            MODE_PRIVATE
+        )
+
         // Parse deep link code
         val code = intent?.data?.getQueryParameter("code")
         if (code != null) {
             Log.d("POCKETDEV", "Code query parameter found: $code")
-            viewModel.exchangeCodeForToken(code)
+            viewModel.exchangeCodeForToken(code) { token ->
+                sessionPreferences.edit()
+                    .putString(KEY_ACCESS_TOKEN, token)
+                    .apply()
+            }
+        } else {
+            val savedAccessToken = sessionPreferences.getString(KEY_ACCESS_TOKEN, null)
+            if (!savedAccessToken.isNullOrBlank()) {
+                viewModel.restoreSession(savedAccessToken)
+            }
         }
 
         setContent {
@@ -59,6 +73,9 @@ class MainActivity : ComponentActivity() {
                                         viewModel.selectRepository(repo)
                                     },
                                     onLogout = {
+                                        sessionPreferences.edit()
+                                            .remove(KEY_ACCESS_TOKEN)
+                                            .apply()
                                         viewModel.logout()
                                     }
                                 )
@@ -70,6 +87,14 @@ class MainActivity : ComponentActivity() {
                                     selectedFile = viewModel.selectedFile,
                                     selectedFolder = viewModel.selectedFolder,
                                     selectedContent = viewModel.selectedFileContent,
+                                    editorStatusMessage = viewModel.editorStatusMessage,
+                                    canSave = viewModel.canSaveFile,
+                                    onContentChange = { content ->
+                                        viewModel.updateSelectedFileContent(content)
+                                    },
+                                    onSaveClick = {
+                                        viewModel.saveSelectedFileContent()
+                                    },
                                     onItemClick = { item ->
                                         viewModel.selectRepositoryItem(item)
                                     },
@@ -87,6 +112,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    companion object {
+        private const val SESSION_PREFERENCES = "pocketdev_session"
+        private const val KEY_ACCESS_TOKEN = "github_access_token"
     }
 }
 

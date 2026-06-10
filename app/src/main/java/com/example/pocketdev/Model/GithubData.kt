@@ -36,3 +36,13 @@ data class GitHubFileContent(
     val encoding: String?,
     val content: String?
 )
+
+data class GitHubUpdateFileRequest(
+    val message: String,
+    val content: String,
+    val sha: String
+)
+
+data class GitHubUpdateFileResponse(
+    val content: GitHubContentItem
+)

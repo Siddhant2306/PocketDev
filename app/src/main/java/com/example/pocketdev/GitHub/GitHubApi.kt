@@ -5,6 +5,8 @@ import com.example.pocketdev.Model.GitHubUser
 import com.example.pocketdev.Model.GitHubTokenResponse
 import com.example.pocketdev.Model.GitHubContentItem
 import com.example.pocketdev.Model.GitHubFileContent
+import com.example.pocketdev.Model.GitHubUpdateFileRequest
+import com.example.pocketdev.Model.GitHubUpdateFileResponse
 import retrofit2.http.*
 
 interface GitHubAuthApi {
@@ -51,4 +53,13 @@ interface GitHubApi {
         @Path("repo") repo: String,
         @Path(value = "path", encoded = true) path: String
     ): GitHubFileContent
+
+    @PUT("repos/{owner}/{repo}/contents/{path}")
+    suspend fun updateFileContent(
+        @Header("Authorization") token: String,
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Path(value = "path", encoded = true) path: String,
+        @Body request: GitHubUpdateFileRequest
+    ): GitHubUpdateFileResponse
 }
